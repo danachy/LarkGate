@@ -20,7 +20,14 @@
       "Bash(git add:*)",
       "Bash(git commit:*)",
       "Bash(git push:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "mcp__filesystem__read_multiple_files",
+      "mcp__filesystem__search_files",
+      "Bash(find:*)",
+      "Bash(grep:*)",
+      "Bash(touch:*)",
+      "Bash(git check-ignore:*)",
+      "Bash(mkdir:*)"
     ],
     "deny": []
   }
