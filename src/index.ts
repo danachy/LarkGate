@@ -70,7 +70,8 @@ async function start() {
     timeWindow: config.rate_limit.window_ms,
     keyGenerator: (request) => {
       // Use sessionId for session-based limiting, fall back to IP
-      const sessionId = request.query?.sessionId as string;
+      const query = request.query as { sessionId?: string };
+      const sessionId = query?.sessionId;
       return sessionId || request.ip;
     },
     skipOnError: true,
@@ -78,7 +79,8 @@ async function start() {
 
   // Custom rate limiting for session-based endpoints
   fastify.addHook('preHandler', async (request, reply) => {
-    const sessionId = request.query?.sessionId as string;
+    const query = request.query as { sessionId?: string };
+    const sessionId = query?.sessionId;
     if (sessionId && request.url.includes('/messages')) {
       // Implement custom session-based rate limiting here if needed
       // For now, rely on the global rate limiter

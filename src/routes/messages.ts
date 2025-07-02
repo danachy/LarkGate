@@ -64,7 +64,7 @@ export async function messageRoutes(
           tokenData = await oauthService.ensureValidToken(tokenData);
           
           // Update token if it was refreshed
-          if (session.unionId && tokenData !== session.tokenData) {
+          if (session?.unionId && tokenData !== session?.tokenData) {
             tokenStorage.setSessionToken(sessionId, session.unionId, tokenData);
           }
         } catch (error) {
