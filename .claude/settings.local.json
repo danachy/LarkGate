@@ -17,7 +17,10 @@
       "Bash(node:*)",
       "Bash(curl:*)",
       "Bash(timeout 5 curl -N \"http://localhost:3000/sse?sessionId=test456\")",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(ls:*)"
     ],
     "deny": []
   }
