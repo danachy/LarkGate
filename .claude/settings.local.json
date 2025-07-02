@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__filesystem__directory_tree",
+      "mcp__filesystem__list_directory",
+      "mcp__filesystem__read_file",
+      "mcp__filesystem__create_directory",
+      "Bash(npm install)",
+      "Bash(npm install:*)",
+      "Bash(npm cache clean:*)",
+      "Bash(sudo chown:*)",
+      "Bash(rm:*)",
+      "Bash(npx tsx:*)",
+      "Bash(npm search:*)",
+      "Bash(npm run dev:*)",
+      "Bash(npx @larksuiteoapi/lark-mcp:*)",
+      "Bash(node:*)",
+      "Bash(curl:*)",
+      "Bash(timeout 5 curl -N \"http://localhost:3000/sse?sessionId=test456\")",
+      "Bash(git add:*)"
+    ],
+    "deny": []
+  }
+}
