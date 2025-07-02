@@ -2,120 +2,156 @@
 
 A security gateway for Feishu (Lark) OpenAPI integration that provides OAuth 2.0 authentication and eliminates the need for manual user access token management when using Claude/AI tools.
 
+## Features
+
+- **OAuth 2.0 Flow**: Automatic token acquisition and refresh
+- **SSE Communication**: Bidirectional server-sent events for AI tools
+- **MCP Proxy**: Secure token injection and request forwarding
+- **Token Management**: LRU cache with persistent snapshots
+- **Rate Limiting**: Per-session and per-IP protection
+- **Security**: Request logging with data masking
+
 ## Quick Start
 
-### 1. Install Dependencies
+### 1. Prerequisites
 
-```bash
-npm install
-# or
-pnpm install
-```
+- Docker and Docker Compose
+- Feishu (Lark) application credentials
 
-### 2. Configure Environment
-
-Copy the example environment file and configure your Feishu app credentials:
-
-```bash
-cp .env.example .env
-```
-
-Edit `.env` and set:
-- `FEISHU_APP_ID`: Your Feishu app ID
-- `FEISHU_APP_SECRET`: Your Feishu app secret  
-- `FEISHU_REDIRECT_URI`: OAuth callback URL (default: `http://localhost:3000/oauth/callback`)
-
-### 3. Set up Feishu App
+### 2. Get Feishu App Credentials
 
 1. Go to [Feishu Open Platform](https://open.feishu.cn/app)
 2. Create a new app or use existing one
-3. In app settings, add redirect URI: `http://localhost:3000/oauth/callback`
-4. Add required permissions: `contact:user.id:readonly`
+3. Note your `App ID` and `App Secret`
+4. In app settings:
+   - Add redirect URI: `https://your-domain.com/oauth/callback`
+   - Add permission: `contact:user.id:readonly`
 
-### 4. Start MCP Server
-
-Make sure `lark-openapi-mcp` is running on port 3001:
-
-```bash
-# In a separate terminal
-npx @larksuiteoapi/mcp-server
-```
-
-### 5. Start LarkGate
+### 3. Configure Environment
 
 ```bash
-npm run dev
+# Clone the repository
+git clone https://github.com/danachy/LarkGate.git
+cd LarkGate
+
+# Copy environment template
+cp .env.example .env
+
+# Edit configuration
+nano .env
 ```
 
-LarkGate will start on `http://localhost:3000`
-
-## Usage
-
-### With Claude Desktop
-
-Add this to your Claude Desktop MCP settings:
-
-```json
-{
-  "mcpServers": {
-    "larkgate": {
-      "command": "npx",
-      "args": ["sse-client", "http://localhost:3000/sse"]
-    }
-  }
-}
+Update these values in `.env`:
+```env
+FEISHU_APP_ID=your_app_id_here
+FEISHU_APP_SECRET=your_app_secret_here
+FEISHU_REDIRECT_URI=https://your-domain.com/oauth/callback
+NODE_ENV=production
 ```
 
-### Manual Testing
+### 4. Deploy with Docker
 
-1. **Health Check**: `GET http://localhost:3000/health`
-2. **Start OAuth**: `GET http://localhost:3000/oauth/start?sessionId=test123`
-3. **SSE Connection**: `GET http://localhost:3000/sse?sessionId=test123`
-4. **Send Message**: `POST http://localhost:3000/messages?sessionId=test123`
+```bash
+# Start all services
+npm run docker:up
+
+# View logs
+npm run docker:logs
+
+# Stop services
+npm run docker:down
+```
+
+This starts:
+- **LarkGate Gateway** on port 3000
+- **Lark MCP Server** on port 3001
 
 ## API Endpoints
 
-- `GET /sse?sessionId=<id>` - SSE connection with metadata
+- `GET /health` - Health check and system status
+- `GET /sse?sessionId=<id>` - SSE connection with OAuth metadata
 - `POST /messages?sessionId=<id>` - JSON-RPC proxy to MCP
-- `GET /oauth/start?sessionId=<id>` - Start OAuth flow
+- `GET /oauth/start?sessionId=<id>` - Start OAuth authorization
 - `GET /oauth/callback` - OAuth callback handler
-- `POST /manual-token?sessionId=<id>` - Set manual token (debug)
-- `GET /health` - Health check
+
+## Usage with Claude
+
+### Method 1: Direct SSE Connection
+Configure your AI tool to connect to:
+```
+https://your-domain.com/sse
+```
+
+### Method 2: Manual Testing
+```bash
+# Health check
+curl https://your-domain.com/health
+
+# Start OAuth flow
+curl https://your-domain.com/oauth/start?sessionId=test123
+
+# SSE connection
+curl -N https://your-domain.com/sse?sessionId=test123
+```
 
 ## Architecture
 
 ```
-Claude/AI Tool → SSE → LarkGate → OAuth → Feishu API
-                         ↓
-                   lark-openapi-mcp
+AI Tool → LarkGate Gateway → Lark MCP Server → Feishu API
+              ↓
+        OAuth 2.0 Flow ←→ Feishu OAuth
 ```
 
 ## Development
 
+For local development without Docker:
+
 ```bash
-# Development with hot reload
+# Install dependencies
+npm install
+
+# Copy environment template
+cp .env.example .env
+# Edit .env with localhost URLs
+
+# Start development server (LarkGate only)
 npm run dev
 
-# Build
-npm run build
-
-# Run built version
-npm start
-
-# Lint
-npm run lint
-
-# Type check
-npm run typecheck
+# In another terminal, start MCP server
+npx @larksuiteoapi/lark-mcp mcp --mode sse --port 3001 \
+  --app-id YOUR_APP_ID --app-secret YOUR_APP_SECRET
 ```
 
-## Token Management
+## Configuration
 
-- **OAuth Mode**: Secure 30-day tokens with automatic refresh
-- **Manual Mode**: 2-hour tokens via direct paste (fallback)
-- **Storage**: In-memory LRU cache with periodic file snapshots
-- **Security**: Rate limiting, request logging with data masking
+### Environment Variables
 
-## Environment Variables
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `PORT` | LarkGate server port | `3000` |
+| `HOST` | Server bind address | `0.0.0.0` |
+| `FEISHU_APP_ID` | Feishu application ID | Required |
+| `FEISHU_APP_SECRET` | Feishu application secret | Required |
+| `FEISHU_REDIRECT_URI` | OAuth callback URL | Required |
+| `MCP_HOST` | MCP server hostname | `localhost` |
+| `MCP_PORT` | MCP server port | `3001` |
+| `RATE_LIMIT_PER_SESSION` | Requests per session/minute | `50` |
+| `RATE_LIMIT_PER_IP` | Requests per IP/minute | `200` |
 
-See `.env.example` for all available configuration options.
+### Docker Services
+
+- **lark-mcp**: Official Lark OpenAPI MCP server
+- **larkgate**: OAuth gateway and proxy service
+- **larkgate-network**: Internal Docker network
+
+## Security
+
+- Environment variables are never committed to the repository
+- OAuth tokens are encrypted and stored securely
+- Request parameters are hashed in logs for privacy
+- Rate limiting prevents abuse
+- HTTPS required for production OAuth callbacks
+
+## License
+
+MIT License - see LICENSE file for details
