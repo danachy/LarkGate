@@ -65,7 +65,7 @@ export async function messageRoutes(
           
           // Update token if it was refreshed
           if (session?.unionId && tokenData !== session?.tokenData) {
-            tokenStorage.setSessionToken(sessionId, session.unionId, tokenData);
+            tokenStorage.setSessionToken(sessionId, session!.unionId, tokenData);
           }
         } catch (error) {
           console.warn(`Failed to refresh token for session ${sessionId}:`, error);
