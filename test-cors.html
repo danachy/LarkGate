@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>CORS Test</title>
+</head>
+<body>
+    <h1>CORS Test</h1>
+    <div id="result"></div>
+    <script>
+        console.log('Testing CORS...');
+        
+        // Test basic fetch
+        fetch('http://localhost:3000/health')
+            .then(response => response.json())
+            .then(data => {
+                console.log('Health check success:', data);
+                document.getElementById('result').innerHTML += '<p>✅ Health check: SUCCESS</p>';
+            })
+            .catch(error => {
+                console.error('Health check error:', error);
+                document.getElementById('result').innerHTML += '<p>❌ Health check: FAILED - ' + error.message + '</p>';
+            });
+        
+        // Test SSE
+        try {
+            const eventSource = new EventSource('http://localhost:3000/sse');
+            
+            eventSource.onopen = () => {
+                console.log('SSE connection opened');
+                document.getElementById('result').innerHTML += '<p>✅ SSE connection: SUCCESS</p>';
+                eventSource.close();
+            };
+            
+            eventSource.onerror = (error) => {
+                console.error('SSE error:', error);
+                document.getElementById('result').innerHTML += '<p>❌ SSE connection: FAILED - readyState=' + eventSource.readyState + '</p>';
+            };
+            
+            eventSource.onmessage = (event) => {
+                console.log('SSE message:', event.data);
+                document.getElementById('result').innerHTML += '<p>✅ SSE message received</p>';
+                eventSource.close();
+            };
+            
+        } catch (error) {
+            console.error('SSE creation error:', error);
+            document.getElementById('result').innerHTML += '<p>❌ SSE creation: FAILED - ' + error.message + '</p>';
+        }
+    </script>
+</body>
+</html>

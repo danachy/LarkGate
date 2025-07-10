@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔐 飞书 OAuth 测试</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1a1a1a;
+            color: #e0e0e0;
+            padding: 2rem;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .container {
+            background: #2a2a2a;
+            padding: 2rem;
+            border-radius: 1rem;
+            border: 1px solid #444;
+        }
+        h1 {
+            color: #66ccff;
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        .step {
+            background: #333;
+            padding: 1rem;
+            margin: 1rem 0;
+            border-radius: 0.5rem;
+            border-left: 4px solid #66ccff;
+        }
+        .step h3 {
+            color: #66ccff;
+            margin-top: 0;
+        }
+        .oauth-url {
+            background: #444;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            word-break: break-all;
+            font-family: monospace;
+            margin: 1rem 0;
+        }
+        .oauth-link {
+            display: inline-block;
+            background: #0066cc;
+            color: white;
+            padding: 1rem 2rem;
+            text-decoration: none;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            margin: 1rem 0;
+            transition: background 0.2s;
+        }
+        .oauth-link:hover {
+            background: #0052a3;
+        }
+        .status {
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin: 1rem 0;
+            font-weight: 600;
+        }
+        .status.success {
+            background: #1a3d1a;
+            color: #44ff44;
+            border: 1px solid #44ff44;
+        }
+        .status.error {
+            background: #3d1a1a;
+            color: #ff4444;
+            border: 1px solid #ff4444;
+        }
+        .status.info {
+            background: #1a1a3d;
+            color: #66ccff;
+            border: 1px solid #66ccff;
+        }
+        .code-block {
+            background: #1e1e1e;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            font-family: monospace;
+            overflow-x: auto;
+            border: 1px solid #444;
+        }
+        .session-info {
+            font-size: 0.9rem;
+            color: #999;
+            margin-top: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔐 飞书 OAuth 流程测试</h1>
+        
+        <div class="step">
+            <h3>步骤 1: 获取认证 URL</h3>
+            <p>点击下方按钮获取飞书 OAuth 认证链接：</p>
+            <button onclick="getAuthUrl()" style="background: #0066cc; color: white; border: none; padding: 0.5rem 1rem; border-radius: 0.25rem; cursor: pointer;">
+                获取认证 URL
+            </button>
+            <div id="authUrlContainer"></div>
+        </div>
+        
+        <div class="step">
+            <h3>步骤 2: 完成认证</h3>
+            <p>点击认证链接，在飞书页面完成授权，然后会自动跳转回本页面。</p>
+        </div>
+        
+        <div class="step">
+            <h3>步骤 3: 查看认证结果</h3>
+            <div id="authResult"></div>
+            <div id="tokenInfo"></div>
+        </div>
+
+        <div class="session-info">
+            <strong>Session ID:</strong> <span id="sessionId">未获取</span><br>
+            <strong>当前状态:</strong> <span id="currentStatus">等待开始</span>
+        </div>
+    </div>
+
+    <script>
+        let sessionId = null;
+        let eventSource = null;
+
+        // 生成随机 session ID
+        function generateSessionId() {
+            return 'oauth-test-' + Math.random().toString(36).substr(2, 9);
+        }
+
+        // 更新状态显示
+        function updateStatus(message, type = 'info') {
+            document.getElementById('currentStatus').textContent = message;
+        }
+
+        // 获取认证 URL
+        async function getAuthUrl() {
+            try {
+                if (!sessionId) {
+                    sessionId = generateSessionId();
+                    document.getElementById('sessionId').textContent = sessionId;
+                }
+
+                updateStatus('正在获取认证 URL...', 'info');
+
+                // 连接 SSE 获取 OAuth URL
+                eventSource = new EventSource(`http://localhost:3000/sse?sessionId=${sessionId}`);
+                
+                eventSource.onmessage = (event) => {
+                    try {
+                        const data = JSON.parse(event.data);
+                        
+                        if (data.type === 'metadata' && data.data.oauth_url) {
+                            const oauthUrl = data.data.oauth_url;
+                            
+                            document.getElementById('authUrlContainer').innerHTML = `
+                                <div class="status success">✅ 认证 URL 获取成功！</div>
+                                <div class="oauth-url">${oauthUrl}</div>
+                                <a href="${oauthUrl}" class="oauth-link" target="_blank">🚀 前往飞书认证</a>
+                            `;
+                            
+                            updateStatus('认证 URL 已获取，请点击链接完成认证', 'success');
+                            
+                            // 关闭 SSE 连接
+                            eventSource.close();
+                        }
+                        
+                    } catch (error) {
+                        console.error('解析 SSE 数据失败:', error);
+                    }
+                };
+                
+                eventSource.onerror = (error) => {
+                    console.error('SSE 连接错误:', error);
+                    document.getElementById('authUrlContainer').innerHTML = `
+                        <div class="status error">❌ 无法连接到 LarkGate，请确保服务正在运行</div>
+                    `;
+                    updateStatus('连接失败', 'error');
+                };
+
+            } catch (error) {
+                console.error('获取认证 URL 失败:', error);
+                updateStatus('获取认证 URL 失败: ' + error.message, 'error');
+            }
+        }
+
+        // 检查 URL 参数中的认证结果
+        function checkAuthResult() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const code = urlParams.get('code');
+            const state = urlParams.get('state');
+            const error = urlParams.get('error');
+
+            if (error) {
+                document.getElementById('authResult').innerHTML = `
+                    <div class="status error">❌ 认证失败: ${error}</div>
+                `;
+                updateStatus('认证失败', 'error');
+                return;
+            }
+
+            if (code && state) {
+                document.getElementById('authResult').innerHTML = `
+                    <div class="status success">✅ 认证成功！</div>
+                    <div class="code-block">
+                        <strong>Authorization Code:</strong> ${code}<br>
+                        <strong>State:</strong> ${state}
+                    </div>
+                `;
+                updateStatus('认证成功，正在获取访问令牌...', 'success');
+
+                // 提取 session ID
+                const stateSessionId = state.split('_').pop();
+                if (stateSessionId) {
+                    sessionId = stateSessionId;
+                    document.getElementById('sessionId').textContent = sessionId;
+                }
+
+                // 检查令牌状态
+                checkTokenStatus();
+            }
+        }
+
+        // 检查令牌状态
+        async function checkTokenStatus() {
+            try {
+                const response = await fetch(`http://localhost:3000/health`);
+                const data = await response.json();
+                
+                document.getElementById('tokenInfo').innerHTML = `
+                    <div class="status info">
+                        <h4>📋 LarkGate 状态信息</h4>
+                        <div class="code-block">
+                            <strong>服务状态:</strong> ${data.status}<br>
+                            <strong>版本:</strong> ${data.version}<br>
+                            <strong>运行时间:</strong> ${Math.floor(data.uptime)}秒<br>
+                            <strong>总会话数:</strong> ${data.sessions?.totalSessions || 0}<br>
+                            <strong>认证会话数:</strong> ${data.sessions?.authenticatedSessions || 0}
+                        </div>
+                    </div>
+                `;
+
+                updateStatus('OAuth 流程测试完成！', 'success');
+
+            } catch (error) {
+                console.error('获取令牌状态失败:', error);
+                updateStatus('无法获取令牌状态', 'error');
+            }
+        }
+
+        // 页面加载时检查认证结果
+        document.addEventListener('DOMContentLoaded', function() {
+            checkAuthResult();
+        });
+    </script>
+</body>
+</html>

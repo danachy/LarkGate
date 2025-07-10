@@ -213,7 +213,7 @@ export class InstanceManager {
         const healthUrl = `http://localhost:${instance.port}/health`;
         const response = await fetch(healthUrl, {
           method: 'GET',
-          timeout: 2000,
+          signal: AbortSignal.timeout(2000),
         });
         
         if (response.ok) {
@@ -280,7 +280,7 @@ export class InstanceManager {
         const healthUrl = `http://localhost:${instance.port}/health`;
         const response = await fetch(healthUrl, {
           method: 'GET',
-          timeout: 5000,
+          signal: AbortSignal.timeout(5000),
         });
         
         if (!response.ok) {
@@ -304,7 +304,7 @@ export class InstanceManager {
       const healthUrl = `http://localhost:${instance.port}/health`;
       const response = await fetch(healthUrl, {
         method: 'GET',
-        timeout: 3000,
+        signal: AbortSignal.timeout(3000),
       });
       
       return response.ok;
@@ -353,7 +353,7 @@ export class InstanceManager {
           'Content-Type': 'application/json',
         },
         body: body ? JSON.stringify(body) : undefined,
-        timeout: 30000,
+        signal: AbortSignal.timeout(30000),
       });
       
       if (!response.ok) {

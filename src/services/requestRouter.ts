@@ -135,7 +135,7 @@ export class RequestRouter {
           'User-Agent': 'LarkGate/0.2.0',
         },
         body: JSON.stringify(request),
-        timeout: 30000,
+        signal: AbortSignal.timeout(30000),
       });
       
       if (!response.ok) {

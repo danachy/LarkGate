@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>SSE 调试测试</title>
+    <style>
+        body { font-family: monospace; background: #1a1a1a; color: #e0e0e0; padding: 20px; }
+        .log { background: #2a2a2a; padding: 10px; margin: 5px 0; border-radius: 5px; }
+        .success { color: #44ff44; }
+        .error { color: #ff4444; }
+        .info { color: #66ccff; }
+    </style>
+</head>
+<body>
+    <h1>SSE 连接调试</h1>
+    <div id="logs"></div>
+    
+    <script>
+        function log(message, type = 'info') {
+            const div = document.createElement('div');
+            div.className = `log ${type}`;
+            div.textContent = `${new Date().toLocaleTimeString()}: ${message}`;
+            document.getElementById('logs').appendChild(div);
+            console.log(message);
+        }
+        
+        log('开始 SSE 测试', 'info');
+        
+        // 1. 测试基本 fetch
+        log('测试 1: 基本 fetch 请求', 'info');
+        fetch('http://localhost:3000/health')
+            .then(response => {
+                log(`Fetch 响应状态: ${response.status}`, response.ok ? 'success' : 'error');
+                return response.json();
+            })
+            .then(data => {
+                log(`Health check 成功: ${JSON.stringify(data)}`, 'success');
+            })
+            .catch(error => {
+                log(`Fetch 错误: ${error.message}`, 'error');
+            });
+        
+        // 2. 测试 SSE 连接
+        log('测试 2: SSE 连接', 'info');
+        
+        try {
+            const eventSource = new EventSource('http://localhost:3000/sse');
+            log('EventSource 对象创建成功', 'success');
+            
+            eventSource.onopen = function(event) {
+                log(`SSE onopen 触发, readyState: ${eventSource.readyState}`, 'success');
+            };
+            
+            eventSource.onmessage = function(event) {
+                log(`SSE 消息接收: ${event.data.substring(0, 100)}...`, 'success');
+                
+                // 接收到第一条消息后关闭连接
+                setTimeout(() => {
+                    eventSource.close();
+                    log('SSE 连接已手动关闭', 'info');
+                }, 1000);
+            };
+            
+            eventSource.onerror = function(error) {
+                log(`SSE 错误, readyState: ${eventSource.readyState}`, 'error');
+                
+                if (eventSource.readyState === EventSource.CONNECTING) {
+                    log('SSE 状态: CONNECTING (0)', 'info');
+                } else if (eventSource.readyState === EventSource.OPEN) {
+                    log('SSE 状态: OPEN (1)', 'info');
+                } else if (eventSource.readyState === EventSource.CLOSED) {
+                    log('SSE 状态: CLOSED (2)', 'error');
+                }
+            };
+            
+            // 10秒后如果还没连接成功，记录状态
+            setTimeout(() => {
+                log(`10秒后检查: readyState = ${eventSource.readyState}`, 'info');
+                if (eventSource.readyState !== EventSource.OPEN) {
+                    log('SSE 连接在10秒内未成功建立', 'error');
+                }
+            }, 10000);
+            
+        } catch (error) {
+            log(`EventSource 创建失败: ${error.message}`, 'error');
+        }
+        
+        // 3. 测试 CORS 预检
+        log('测试 3: CORS 预检请求', 'info');
+        fetch('http://localhost:3000/sse', {
+            method: 'GET',
+            headers: {
+                'Accept': 'text/event-stream',
+                'Cache-Control': 'no-cache'
+            }
+        }).then(response => {
+            log(`CORS 预检响应: ${response.status}`, response.ok ? 'success' : 'error');
+            log(`Response headers: ${JSON.stringify([...response.headers.entries()])}`, 'info');
+        }).catch(error => {
+            log(`CORS 预检失败: ${error.message}`, 'error');
+        });
+    </script>
+</body>
+</html>

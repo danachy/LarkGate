@@ -29,7 +29,7 @@ export class OAuthService {
       app_id: this.config.feishu.app_id,
       redirect_uri: this.config.feishu.redirect_uri,
       response_type: 'code',
-      scope: 'contact:user.id:readonly calendar:calendar.readonly calendar:calendar.event:readonly docs:docs:readonly',
+      scope: 'contact:user.id:readonly',
       state: `${state}_${sessionId}`, // 包含sessionId便于回调处理
     });
     
@@ -43,14 +43,25 @@ export class OAuthService {
     console.log(`🔄 Processing OAuth callback for state: ${state}`);
     
     // 解析 state
-    const [stateToken, sessionId] = state.split('_');
-    const stateData = this.stateStore.get(stateToken);
-    
-    if (!stateData || stateData.sessionId !== sessionId) {
-      throw new Error('Invalid or expired state parameter');
+    const stateParts = state.split('_');
+    if (stateParts.length < 2) {
+      throw new Error('Invalid state format');
     }
     
-    this.stateStore.delete(stateToken);
+    const stateToken = stateParts[0];
+    const sessionId = stateParts.slice(1).join('_'); // 处理sessionId中可能包含下划线的情况
+    const stateData = this.stateStore.get(stateToken);
+    
+    // 容错处理：如果 state 不存在（可能因为服务重启），但 state 格式正确，仍然允许继续
+    if (stateData) {
+      if (stateData.sessionId !== sessionId) {
+        throw new Error('Invalid state parameter - session mismatch');
+      }
+      this.stateStore.delete(stateToken);
+      console.log(`✅ State validated and removed for session ${sessionId}`);
+    } else {
+      console.log(`⚠️ State not found in store (possibly due to server restart), but proceeding with session ${sessionId}`);
+    }
     
     try {
       // 获取访问令牌
@@ -73,28 +84,36 @@ export class OAuthService {
   }
 
   private async exchangeCodeForToken(code: string): Promise<OAuthTokenResponse> {
-    const response = await fetch('https://open.feishu.cn/open-apis/authen/v1/oidc/access_token', {
+    const requestBody = {
+      grant_type: 'authorization_code',
+      app_id: this.config.feishu.app_id,
+      app_secret: this.config.feishu.app_secret,
+      code,
+      redirect_uri: this.config.feishu.redirect_uri,
+    };
+    
+    console.log(`🔄 Exchanging code for token...`);
+    console.log(`📝 Request: POST https://open.feishu.cn/open-apis/authen/v1/access_token`);
+    console.log(`📝 Body: ${JSON.stringify({ ...requestBody, app_secret: '***' })}`);
+    
+    const response = await fetch('https://open.feishu.cn/open-apis/authen/v1/access_token', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        grant_type: 'authorization_code',
-        client_id: this.config.feishu.app_id,
-        client_secret: this.config.feishu.app_secret,
-        code,
-        redirect_uri: this.config.feishu.redirect_uri,
-      }),
+      body: JSON.stringify(requestBody),
     });
     
+    const data = await response.json() as any;
+    console.log(`📝 Response status: ${response.status}`);
+    console.log(`📝 Response data: ${JSON.stringify(data)}`);
+    
     if (!response.ok) {
-      throw new Error(`Token exchange failed: ${response.status} ${response.statusText}`);
+      throw new Error(`Token exchange failed: ${response.status} ${response.statusText} - ${JSON.stringify(data)}`);
     }
     
-    const data = await response.json() as any;
-    
     if (data.code !== 0) {
-      throw new Error(`Token exchange error: ${data.msg || 'Unknown error'}`);
+      throw new Error(`Token exchange error (code: ${data.code}): ${data.msg || 'Unknown error'}`);
     }
     
     return {

@@ -51,7 +51,7 @@ module.exports = {
         LOG_LEVEL: 'debug',
         
         // Development-specific settings
-        LARK_MCP_BINARY: 'lark-openapi-mcp',
+        LARK_MCP_BINARY: './mock-lark-mcp.cjs',
         LARK_MCP_BASE_PORT: 3001,
         LARK_MCP_DEFAULT_PORT: 4000,
         

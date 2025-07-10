@@ -117,7 +117,17 @@ async function start() {
   // Register plugins
   await fastify.register(cors, {
     origin: true,
-    credentials: true,
+    credentials: false,
+    methods: ['GET', 'POST', 'OPTIONS'],
+    allowedHeaders: [
+      'Content-Type', 
+      'Authorization', 
+      'Accept', 
+      'Cache-Control',
+      'Last-Event-ID'
+    ],
+    exposedHeaders: ['Content-Type'],
+    optionsSuccessStatus: 200
   });
 
   // Rate limiting
@@ -133,7 +143,7 @@ async function start() {
   });
 
   // SSE endpoint
-  fastify.get('/sse', async (request, reply) => {
+  fastify.get('/sse', (request, reply) => {
     const query = request.query as { sessionId?: string };
     let sessionId = query.sessionId;
     
@@ -141,60 +151,101 @@ async function start() {
       sessionId = uuidv4();
     }
 
-    // Set SSE headers
-    reply.type('text/event-stream');
-    reply.header('Cache-Control', 'no-cache');
-    reply.header('Connection', 'keep-alive');
-    reply.header('Access-Control-Allow-Origin', '*');
+    // 立即设置 SSE 头部并发送响应头
+    reply.raw.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Headers': 'Cache-Control',
+      'Access-Control-Allow-Methods': 'GET, OPTIONS'
+    });
 
-    try {
-      // Get tools from default instance
-      const tools = await requestRouter.getToolsFromDefaultInstance();
-      const capabilities = await requestRouter.getCapabilitiesFromDefaultInstance();
-      
-      // Check if user is authenticated
-      const isAuthenticated = requestRouter.isSessionAuthenticated(sessionId);
-      
-      const metadata: SSEMetadata = {
-        endpoint: `${request.protocol}://${request.hostname}:${config.port}/messages?sessionId=${sessionId}`,
-        session_id: sessionId,
-        authenticated: isAuthenticated,
-        tools,
-      };
+    // 立即发送连接确认
+    reply.raw.write(': Connected to LarkGate\n\n');
 
-      if (!isAuthenticated) {
-        metadata.oauth_url = oauthService.generateAuthUrl(sessionId);
+    // 异步获取数据并发送，但不阻塞响应头的发送
+    setImmediate(async () => {
+      try {
+        // 使用超时保护获取工具列表
+        const toolsPromise = Promise.race([
+          requestRouter.getToolsFromDefaultInstance(),
+          new Promise<any[]>((resolve) => {
+            setTimeout(() => resolve([]), 3000); // 3秒超时，返回空数组
+          })
+        ]);
+
+        // 使用超时保护获取能力信息
+        const capabilitiesPromise = Promise.race([
+          requestRouter.getCapabilitiesFromDefaultInstance(),
+          new Promise<any>((resolve) => {
+            setTimeout(() => resolve({
+              protocolVersion: '2024-11-05',
+              capabilities: { tools: { listChanged: true } },
+              serverInfo: { name: 'lark-openapi-mcp', version: '0.4.0' }
+            }), 3000); // 3秒超时，返回默认能力
+          })
+        ]);
+
+        const [tools, capabilities] = await Promise.all([toolsPromise, capabilitiesPromise]);
+        
+        // 检查用户认证状态
+        const isAuthenticated = requestRouter.isSessionAuthenticated(sessionId);
+        
+        const metadata: SSEMetadata = {
+          endpoint: `${request.protocol}://${request.hostname}:${config.port}/messages?sessionId=${sessionId}`,
+          session_id: sessionId,
+          authenticated: isAuthenticated,
+          tools,
+        };
+
+        if (!isAuthenticated) {
+          metadata.oauth_url = oauthService.generateAuthUrl(sessionId);
+        }
+
+        // 发送元数据
+        if (!reply.raw.destroyed) {
+          reply.raw.write(`data: ${JSON.stringify({
+            type: 'metadata',
+            data: metadata
+          })}\n\n`);
+        }
+
+        // 发送能力信息
+        if (!reply.raw.destroyed) {
+          reply.raw.write(`data: ${JSON.stringify({
+            type: 'capabilities',
+            data: capabilities
+          })}\n\n`);
+        }
+
+        // 设置保活机制
+        const keepAlive = setInterval(() => {
+          if (!reply.raw.destroyed) {
+            reply.raw.write(': keepalive\n\n');
+          } else {
+            clearInterval(keepAlive);
+          }
+        }, 30000);
+
+        // 清理函数
+        const cleanup = () => {
+          clearInterval(keepAlive);
+        };
+
+        request.raw.on('close', cleanup);
+        request.raw.on('error', cleanup);
+
+      } catch (error) {
+        console.error('SSE async error:', error);
+        if (!reply.raw.destroyed) {
+          reply.raw.write(`data: ${JSON.stringify({
+            type: 'error',
+            error: error instanceof Error ? error.message : 'Unknown error'
+          })}\n\n`);
+        }
       }
-
-      // Send initial metadata
-      reply.raw.write(`data: ${JSON.stringify({
-        type: 'metadata',
-        data: metadata
-      })}\n\n`);
-
-      // Send capabilities
-      reply.raw.write(`data: ${JSON.stringify({
-        type: 'capabilities',
-        data: capabilities
-      })}\n\n`);
-
-      // Keep connection alive
-      const keepAlive = setInterval(() => {
-        reply.raw.write(': keepalive\n\n');
-      }, 30000);
-
-      request.raw.on('close', () => {
-        clearInterval(keepAlive);
-      });
-
-    } catch (error) {
-      console.error('SSE error:', error);
-      reply.raw.write(`data: ${JSON.stringify({
-        type: 'error',
-        error: error instanceof Error ? error.message : 'Unknown error'
-      })}\n\n`);
-      reply.raw.end();
-    }
+    });
   });
 
   // Messages endpoint (JSON-RPC)

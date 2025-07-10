@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>✅ LarkGate 最终验证测试</title>
+    <style>
+        body { font-family: monospace; background: #1a1a1a; color: #e0e0e0; padding: 20px; }
+        .success { color: #44ff44; }
+        .error { color: #ff4444; }
+        .result { background: #2a2a2a; padding: 10px; margin: 10px 0; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <h1>🚀 LarkGate 最终验证测试</h1>
+    <div id="results"></div>
+    
+    <script>
+        function addResult(test, status, details = '') {
+            const div = document.createElement('div');
+            div.className = 'result';
+            div.innerHTML = `
+                <span class="${status}">${status === 'success' ? '✅' : '❌'} ${test}</span>
+                ${details ? `<br><small>${details}</small>` : ''}
+            `;
+            document.getElementById('results').appendChild(div);
+        }
+        
+        async function runTests() {
+            addResult('开始最终验证测试...', 'success');
+            
+            // 测试 1: Health Check
+            try {
+                const response = await fetch('http://localhost:3000/health');
+                const data = await response.json();
+                addResult('Health Check', 'success', `状态: ${data.status}, 版本: ${data.version}`);
+            } catch (error) {
+                addResult('Health Check', 'error', error.message);
+                return;
+            }
+            
+            // 测试 2: SSE 连接
+            let sseConnected = false;
+            let sseDataReceived = false;
+            
+            try {
+                const eventSource = new EventSource('http://localhost:3000/sse');
+                
+                const ssePromise = new Promise((resolve, reject) => {
+                    const timeout = setTimeout(() => {
+                        reject(new Error('SSE 连接超时'));
+                    }, 5000);
+                    
+                    eventSource.onopen = () => {
+                        sseConnected = true;
+                        addResult('SSE 连接打开', 'success');
+                    };
+                    
+                    eventSource.onmessage = (event) => {
+                        clearTimeout(timeout);
+                        sseDataReceived = true;
+                        
+                        if (event.data.startsWith(':')) {
+                            addResult('SSE 连接确认', 'success', '收到服务器连接确认');
+                        } else {
+                            try {
+                                const data = JSON.parse(event.data);
+                                if (data.type === 'metadata') {
+                                    addResult('SSE 元数据接收', 'success', 
+                                        `Session: ${data.data.session_id.substring(0, 8)}..., 工具数量: ${data.data.tools.length}`);
+                                }
+                                if (data.type === 'capabilities') {
+                                    addResult('SSE 能力信息接收', 'success', 
+                                        `协议版本: ${data.data.protocolVersion}`);
+                                }
+                            } catch (e) {
+                                addResult('SSE 数据解析', 'error', e.message);
+                            }
+                        }
+                        
+                        // 接收到数据后关闭连接
+                        setTimeout(() => {
+                            eventSource.close();
+                            resolve();
+                        }, 1000);
+                    };
+                    
+                    eventSource.onerror = (error) => {
+                        clearTimeout(timeout);
+                        reject(new Error(`SSE 错误, readyState: ${eventSource.readyState}`));
+                    };
+                });
+                
+                await ssePromise;
+                addResult('SSE 完整流程', 'success', '连接、数据接收、关闭 - 全部成功');
+                
+            } catch (error) {
+                addResult('SSE 连接测试', 'error', error.message);
+            }
+            
+            // 测试 3: 工具列表
+            try {
+                const response = await fetch('http://localhost:3000/tools');
+                const data = await response.json();
+                addResult('工具列表 API', 'success', `获取到 ${data.tools.length} 个工具`);
+            } catch (error) {
+                addResult('工具列表 API', 'error', error.message);
+            }
+            
+            // 测试 4: CORS 预检
+            try {
+                const response = await fetch('http://localhost:3000/sse', {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'text/event-stream',
+                        'Cache-Control': 'no-cache'
+                    }
+                });
+                
+                if (response.ok) {
+                    addResult('CORS 预检', 'success', '跨域请求成功');
+                } else {
+                    addResult('CORS 预检', 'error', `状态码: ${response.status}`);
+                }
+            } catch (error) {
+                addResult('CORS 预检', 'error', error.message);
+            }
+            
+            addResult('🎉 所有测试完成！', 'success', '如果上述测试都通过，说明 LarkGate SSE 问题已完全修复');
+        }
+        
+        // 启动测试
+        runTests();
+    </script>
+</body>
+</html>
