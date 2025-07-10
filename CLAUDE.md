@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-LarkGate is a security gateway for Feishu (Lark) OpenAPI integration that sits between Claude/AI tools and the official `lark-openapi-mcp` server. It provides OAuth 2.0 authentication and token management to eliminate the need for manual user access token pasting.
+LarkGate is a security gateway for Feishu (Lark) OpenAPI integration that sits between Claude/AI tools and the official `lark-mcp` server. It provides OAuth 2.0 authentication and token management to eliminate the need for manual user access token pasting.
 
 ## Architecture
 

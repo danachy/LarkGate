@@ -9,7 +9,7 @@
 ### 1.1 核心问题
 
 * **lark-mcp 单进程架构限制**：
-  * `lark-openapi-mcp` 单个进程仅支持一个 `user_access_token`，无法原生支持多用户
+  * `lark-mcp` 单个进程仅支持一个 `user_access_token`，无法原生支持多用户
   * 每个用户需要独立的 token 环境，避免权限混淆和数据泄露
 
 * **多用户支持挑战**：
@@ -43,7 +43,7 @@
   * 统一日志聚合与监控
 
 * **不在当前范围**
-  * Docker 容器化部署（lark-openapi-mcp 在 Docker 环境中存在兼容性问题）
+  * Docker 容器化部署（lark-mcp 在 Docker 环境中存在兼容性问题）
   * Kubernetes 编排（小规模无需）
   * 跨机器分布式（单机足够）
 
@@ -134,7 +134,7 @@ graph TB
 * **实例创建**：
   * 用户首次访问时，根据 `userId` 创建专属 lark-mcp 进程
   * 分配独立端口（如 3001, 3002, ...）和 token 存储目录
-  * 启动命令：`lark-openapi-mcp --oauth --port 300X --token-dir ./data/user-X/`
+  * 启动命令：`lark-mcp --oauth --port 300X --token-dir ./data/user-X/`
 
 * **实例路由**：
   * 根据请求中的 `sessionId` 识别用户身份，查找对应的 userId
@@ -228,7 +228,7 @@ graph TB
 ### 6.2 PM2 + Node Router 设计模式
 
 **核心设计理念**：
-* **兼容性优先**：lark-openapi-mcp 在 Docker 环境中存在运行问题，采用原生进程管理
+* **兼容性优先**：lark-mcp 在 Docker 环境中存在运行问题，采用原生进程管理
 * **轻量化部署**：避免 Docker 容器化开销，使用原生 Node.js 进程管理
 * **统一进程管理**：PM2 管理 LarkGate 主进程，Node.js 管理子进程实例
 * **资源效率**：直接进程通信，减少网络和容器层开销
@@ -269,7 +269,7 @@ LarkGate/
 │   ├── user-2/                 # 用户2的 token 目录
 │   └── instances.json          # 实例状态持久化
 ├── ecosystem.config.js         # PM2 配置
-└── lark-openapi-mcp/           # 子模块
+└── lark-mcp/           # 子模块
 ```
 
 ### 6.4 部署方案
@@ -308,7 +308,7 @@ LarkGate/
   * macOS/Linux 本地调试
 
 * **备选方案：Docker Compose**（不推荐）
-  * lark-openapi-mcp 在 Docker 环境中存在兼容性问题
+  * lark-mcp 在 Docker 环境中存在兼容性问题
   * 仅在解决 MCP Docker 兼容性问题后考虑使用
   * 增加了容器化开销，但提供更好的隔离
 
@@ -368,7 +368,7 @@ LarkGate/
 
 ## 10. 参考资料
 
-* lark-openapi-mcp GitHub: https://github.com/larksuite/lark-openapi-mcp
+* lark-mcp GitHub: https://github.com/larksuite/lark-openapi-mcp
 * 飞书 OAuth 2.0 文档: https://open.feishu.cn/document/server-docs/authentication-management/access-token/app_access_token
 * Fastify 官方文档: https://fastify.dev/
 * PM2 进程管理: https://pm2.keymetrics.io/

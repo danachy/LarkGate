@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 
 /**
- * Mock lark-openapi-mcp server for local testing
- * This simulates the behavior of the real lark-openapi-mcp binary
+ * Mock lark-mcp server for local testing
+ * This simulates the behavior of the real lark-mcp binary
  */
 
 const http = require('http');
@@ -23,7 +23,7 @@ for (let i = 0; i < args.length; i++) {
   }
 }
 
-console.log(`🎭 Mock lark-openapi-mcp starting on port ${port} in ${mode} mode`);
+console.log(`🎭 Mock lark-mcp starting on port ${port} in ${mode} mode`);
 
 // Mock tools data
 const mockTools = [
@@ -115,7 +115,7 @@ const server = http.createServer((req, res) => {
           resources: { listChanged: true }
         },
         serverInfo: {
-          name: 'mock-lark-openapi-mcp',
+          name: 'mock-lark-mcp',
           version: '0.1.0'
         }
       }
@@ -162,7 +162,7 @@ const server = http.createServer((req, res) => {
                 resources: { listChanged: true }
               },
               serverInfo: {
-                name: 'mock-lark-openapi-mcp',
+                name: 'mock-lark-mcp',
                 version: '0.1.0'
               }
             }
@@ -219,7 +219,7 @@ const server = http.createServer((req, res) => {
 
 // Start server
 server.listen(port, () => {
-  console.log(`✅ Mock lark-openapi-mcp server running on http://localhost:${port}`);
+  console.log(`✅ Mock lark-mcp server running on http://localhost:${port}`);
   console.log(`📋 Available endpoints:`);
   console.log(`   - GET  /health    - Health check`);
   console.log(`   - GET  /sse       - Server-Sent Events`);
