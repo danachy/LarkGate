@@ -31,7 +31,7 @@ function loadConfig(): Config {
       redirect_uri: process.env.FEISHU_REDIRECT_URI || 'http://localhost:3000/oauth/callback',
     },
     lark_mcp: {
-      binary_path: process.env.LARK_MCP_BINARY || 'lark-openapi-mcp',
+      binary_path: process.env.LARK_MCP_BINARY || 'lark-mcp',
       base_port: parseInt(process.env.LARK_MCP_BASE_PORT || '3001'),
       default_instance_port: parseInt(process.env.LARK_MCP_DEFAULT_PORT || '4000'),
     },
@@ -182,7 +182,7 @@ async function start() {
             setTimeout(() => resolve({
               protocolVersion: '2024-11-05',
               capabilities: { tools: { listChanged: true } },
-              serverInfo: { name: 'lark-openapi-mcp', version: '0.4.0' }
+              serverInfo: { name: 'lark-mcp', version: '0.4.0' }
             }), 3000); // 3秒超时，返回默认能力
           })
         ]);

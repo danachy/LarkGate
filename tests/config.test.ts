@@ -21,7 +21,7 @@ describe('Configuration Validation', () => {
       redirect_uri: process.env.FEISHU_REDIRECT_URI || 'http://localhost:3000/oauth/callback',
     },
     lark_mcp: {
-      binary_path: process.env.LARK_MCP_BINARY || 'lark-openapi-mcp',
+      binary_path: process.env.LARK_MCP_BINARY || 'lark-mcp',
       base_port: parseInt(process.env.LARK_MCP_BASE_PORT || '3001'),
       default_instance_port: parseInt(process.env.LARK_MCP_DEFAULT_PORT || '4000'),
     },
@@ -97,7 +97,7 @@ describe('Configuration Validation', () => {
       expect(config.feishu.app_id).toBe('test-app-id');
       expect(config.feishu.app_secret).toBe('test-app-secret');
       expect(config.feishu.redirect_uri).toBe('http://localhost:3000/oauth/callback');
-      expect(config.lark_mcp.binary_path).toBe('lark-openapi-mcp');
+      expect(config.lark_mcp.binary_path).toBe('lark-mcp');
       expect(config.lark_mcp.base_port).toBe(3001);
       expect(config.lark_mcp.default_instance_port).toBe(4000);
       expect(config.storage.data_dir).toBe('./data');

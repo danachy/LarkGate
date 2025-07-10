@@ -443,7 +443,7 @@ describe('RequestRouter', () => {
       
       expect(fallbackCapabilities.protocolVersion).toBe('2024-11-05');
       expect(fallbackCapabilities.capabilities).toBeDefined();
-      expect(fallbackCapabilities.serverInfo.name).toBe('lark-openapi-mcp');
+      expect(fallbackCapabilities.serverInfo.name).toBe('lark-mcp');
     });
   });
 });

@@ -326,7 +326,7 @@ export class RequestRouter {
         }
       },
       serverInfo: {
-        name: 'lark-openapi-mcp',
+        name: 'lark-mcp',
         version: '0.4.0'
       }
     };

@@ -141,7 +141,7 @@ describe('RequestRouter', () => {
       const response = await requestRouter.routeRequest(sessionId, request);
       
       expect(response.result?.protocolVersion).toBe('2024-11-05');
-      expect(response.result?.serverInfo?.name).toBe('lark-openapi-mcp');
+      expect(response.result?.serverInfo?.name).toBe('lark-mcp');
     });
   });
 
