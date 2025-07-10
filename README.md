@@ -1,13 +1,15 @@
 # LarkGate
 
-A security gateway for Feishu (Lark) OpenAPI integration that provides OAuth 2.0 authentication and eliminates the need for manual user access token management when using Claude/AI tools.
+A multi-user security gateway for Feishu (Lark) OpenAPI integration that provides OAuth 2.0 authentication and per-user instance isolation when using Claude/AI tools.
 
 ## Features
 
+- **Multi-User Architecture**: One lark-mcp instance per user for complete isolation
 - **OAuth 2.0 Flow**: Automatic token acquisition and refresh
-- **SSE Communication**: Bidirectional server-sent events for AI tools
-- **MCP Proxy**: Secure token injection and request forwarding
-- **Token Management**: LRU cache with persistent snapshots
+- **Instance Management**: Dynamic creation and lifecycle management of user instances  
+- **Smart Routing**: Request routing based on sessionId to appropriate user instances
+- **SSE Communication**: Server-sent events for AI tools integration
+- **Resource Management**: Automatic cleanup of idle instances
 - **Rate Limiting**: Per-session and per-IP protection
 - **Security**: Request logging with data masking
 
@@ -133,7 +135,7 @@ npx @larksuiteoapi/lark-mcp mcp --mode sse --port 3001 \
 | `FEISHU_APP_ID` | Feishu application ID | Required |
 | `FEISHU_APP_SECRET` | Feishu application secret | Required |
 | `FEISHU_REDIRECT_URI` | OAuth callback URL | Required |
-| `MCP_HOST` | MCP server hostname | `localhost` |
+| `MCP_HOST` | MCP server hostname | `localhost` (Docker: `lark-mcp`) |
 | `MCP_PORT` | MCP server port | `3001` |
 | `RATE_LIMIT_PER_SESSION` | Requests per session/minute | `50` |
 | `RATE_LIMIT_PER_IP` | Requests per IP/minute | `200` |
@@ -141,8 +143,17 @@ npx @larksuiteoapi/lark-mcp mcp --mode sse --port 3001 \
 ### Docker Services
 
 - **lark-mcp**: Official Lark OpenAPI MCP server
-- **larkgate**: OAuth gateway and proxy service
+- **larkgate**: OAuth gateway and proxy service  
 - **larkgate-network**: Internal Docker network
+
+### Important: MCP_HOST Configuration
+
+| Environment | MCP_HOST Value | Explanation |
+|-------------|----------------|-------------|
+| **Docker Compose** | `lark-mcp` | Container name (auto-configured) |
+| **Local Development** | `localhost` | Run MCP server manually |
+
+⚠️ **Note**: When using Docker Compose, the `MCP_HOST` value in your `.env` file is automatically overridden to `lark-mcp` (the container name). You don't need to change it manually.
 
 ## Security
 
